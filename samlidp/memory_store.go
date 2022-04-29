@@ -1,6 +1,7 @@
 package samlidp
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"sync"
@@ -14,7 +15,7 @@ type MemoryStore struct {
 }
 
 // Get fetches the data stored in `key` and unmarshals it into `value`.
-func (s *MemoryStore) Get(key string, value interface{}) error {
+func (s *MemoryStore) Get(ctx context.Context, key string, value interface{}) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -26,7 +27,7 @@ func (s *MemoryStore) Get(key string, value interface{}) error {
 }
 
 // Put marshals `value` and stores it in `key`.
-func (s *MemoryStore) Put(key string, value interface{}) error {
+func (s *MemoryStore) Put(ctx context.Context, key string, value interface{}) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.data == nil {
@@ -42,7 +43,7 @@ func (s *MemoryStore) Put(key string, value interface{}) error {
 }
 
 // Delete removes `key`
-func (s *MemoryStore) Delete(key string) error {
+func (s *MemoryStore) Delete(ctx context.Context, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.data, key)
@@ -52,7 +53,7 @@ func (s *MemoryStore) Delete(key string) error {
 // List returns all the keys that start with `prefix`. The prefix is
 // stripped from each returned value. So if keys are ["aa", "ab", "cd"]
 // then List("a") would produce []string{"a", "b"}
-func (s *MemoryStore) List(prefix string) ([]string, error) {
+func (s *MemoryStore) List(ctx context.Context, prefix string) ([]string, error) {
 	rv := []string{}
 	for k := range s.data {
 		if strings.HasPrefix(k, prefix) {

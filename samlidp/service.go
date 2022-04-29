@@ -1,6 +1,7 @@
 package samlidp
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -37,7 +38,7 @@ func (s *Server) GetServiceProvider(r *http.Request, serviceProviderID string) (
 // HandleListServices handles the `GET /services/` request and responds with a JSON formatted list
 // of service names.
 func (s *Server) HandleListServices(ctx *gin.Context) {
-	services, err := s.Store.List("/services/")
+	services, err := s.Store.List(ctx, "/services/")
 	if err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -53,7 +54,7 @@ func (s *Server) HandleListServices(ctx *gin.Context) {
 // metadata in XML format.
 func (s *Server) HandleGetService(ctx *gin.Context) {
 	service := Service{}
-	err := s.Store.Get(fmt.Sprintf("/services/%s", ctx.Param("id")), &service)
+	err := s.Store.Get(ctx, fmt.Sprintf("/services/%s", ctx.Param("id")), &service)
 	if err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -76,7 +77,7 @@ func (s *Server) HandlePutService(ctx *gin.Context) {
 
 	service.Metadata = *metadata
 
-	err = s.Store.Put(fmt.Sprintf("/services/%s", ctx.Param("id")), &service)
+	err = s.Store.Put(ctx, fmt.Sprintf("/services/%s", ctx.Param("id")), &service)
 	if err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -93,14 +94,14 @@ func (s *Server) HandlePutService(ctx *gin.Context) {
 // HandleDeleteService handles the `DELETE /services/:id` request.
 func (s *Server) HandleDeleteService(ctx *gin.Context) {
 	service := Service{}
-	err := s.Store.Get(fmt.Sprintf("/services/%s", ctx.Param("id")), &service)
+	err := s.Store.Get(ctx, fmt.Sprintf("/services/%s", ctx.Param("id")), &service)
 	if err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	if err := s.Store.Delete(fmt.Sprintf("/services/%s", ctx.Param("id"))); err != nil {
+	if err := s.Store.Delete(ctx, fmt.Sprintf("/services/%s", ctx.Param("id"))); err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -116,13 +117,14 @@ func (s *Server) HandleDeleteService(ctx *gin.Context) {
 // initializeServices reads all the stored services and initializes the underlying
 // identity provider to accept them.
 func (s *Server) initializeServices() error {
-	serviceNames, err := s.Store.List("/services/")
+	ctx := context.TODO()
+	serviceNames, err := s.Store.List(ctx, "/services/")
 	if err != nil {
 		return err
 	}
 	for _, serviceName := range serviceNames {
 		service := Service{}
-		if err := s.Store.Get(fmt.Sprintf("/services/%s", serviceName), &service); err != nil {
+		if err := s.Store.Get(ctx, fmt.Sprintf("/services/%s", serviceName), &service); err != nil {
 			return err
 		}
 

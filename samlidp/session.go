@@ -33,10 +33,12 @@ var sessionMaxAge = time.Hour
 // If neither credentials nor a valid session cookie exist, this function
 // sends a login form and returns nil.
 func (s *Server) GetSession(w http.ResponseWriter, r *http.Request, req *saml.IdpAuthnRequest) *saml.Session {
+
+	ctx := r.Context()
 	// if we received login credentials then maybe we can create a session
 	if r.Method == "POST" && r.PostForm.Get("user") != "" {
 		user := User{}
-		if err := s.Store.Get(fmt.Sprintf("/users/%s", r.PostForm.Get("user")), &user); err != nil {
+		if err := s.Store.Get(ctx, fmt.Sprintf("/users/%s", r.PostForm.Get("user")), &user); err != nil {
 			s.sendLoginForm(w, r, req, "Invalid username or password")
 			return nil
 		}
@@ -60,7 +62,7 @@ func (s *Server) GetSession(w http.ResponseWriter, r *http.Request, req *saml.Id
 			UserGivenName:         user.GivenName,
 			UserScopedAffiliation: user.ScopedAffiliation,
 		}
-		if err := s.Store.Put(fmt.Sprintf("/sessions/%s", session.ID), &session); err != nil {
+		if err := s.Store.Put(ctx, fmt.Sprintf("/sessions/%s", session.ID), &session); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return nil
 		}
@@ -78,7 +80,7 @@ func (s *Server) GetSession(w http.ResponseWriter, r *http.Request, req *saml.Id
 
 	if sessionCookie, err := r.Cookie("session"); err == nil {
 		session := &saml.Session{}
-		if err := s.Store.Get(fmt.Sprintf("/sessions/%s", sessionCookie.Value), session); err != nil {
+		if err := s.Store.Get(ctx, fmt.Sprintf("/sessions/%s", sessionCookie.Value), session); err != nil {
 			if err == ErrNotFound {
 				s.sendLoginForm(w, r, req, "")
 				return nil
@@ -149,7 +151,7 @@ func (s *Server) HandleLogin(ctx *gin.Context) {
 // HandleListSessions handles the `GET /sessions/` request and responds with a JSON formatted list
 // of session names.
 func (s *Server) HandleListSessions(ctx *gin.Context) {
-	sessions, err := s.Store.List("/sessions/")
+	sessions, err := s.Store.List(ctx, "/sessions/")
 	if err != nil {
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -164,7 +166,7 @@ func (s *Server) HandleListSessions(ctx *gin.Context) {
 // object in JSON format.
 func (s *Server) HandleGetSession(ctx *gin.Context) {
 	session := saml.Session{}
-	err := s.Store.Get(fmt.Sprintf("/sessions/%s", ctx.Param("id")), &session)
+	err := s.Store.Get(ctx, fmt.Sprintf("/sessions/%s", ctx.Param("id")), &session)
 	if err != nil {
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -175,7 +177,7 @@ func (s *Server) HandleGetSession(ctx *gin.Context) {
 // HandleDeleteSession handles the `DELETE /sessions/:id` request. It invalidates the
 // specified session.
 func (s *Server) HandleDeleteSession(ctx *gin.Context) {
-	err := s.Store.Delete(fmt.Sprintf("/sessions/%s", ctx.Param("id")))
+	err := s.Store.Delete(ctx, fmt.Sprintf("/sessions/%s", ctx.Param("id")))
 	if err != nil {
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return

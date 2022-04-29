@@ -32,7 +32,7 @@ type Shortcut struct {
 // HandleListShortcuts handles the `GET /shortcuts/` request and responds with a JSON formatted list
 // of shortcut names.
 func (s *Server) HandleListShortcuts(ctx *gin.Context) {
-	shortcuts, err := s.Store.List("/shortcuts/")
+	shortcuts, err := s.Store.List(ctx, "/shortcuts/")
 	if err != nil {
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -47,7 +47,7 @@ func (s *Server) HandleListShortcuts(ctx *gin.Context) {
 // object in JSON format.
 func (s *Server) HandleGetShortcut(ctx *gin.Context) {
 	shortcut := Shortcut{}
-	err := s.Store.Get(fmt.Sprintf("/shortcuts/%s", ctx.Param("id")), &shortcut)
+	err := s.Store.Get(ctx, fmt.Sprintf("/shortcuts/%s", ctx.Param("id")), &shortcut)
 	if err != nil {
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -65,7 +65,7 @@ func (s *Server) HandlePutShortcut(ctx *gin.Context) {
 	}
 	shortcut.Name = ctx.Param("id")
 
-	err := s.Store.Put(fmt.Sprintf("/shortcuts/%s", ctx.Param("id")), &shortcut)
+	err := s.Store.Put(ctx, fmt.Sprintf("/shortcuts/%s", ctx.Param("id")), &shortcut)
 	if err != nil {
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -75,7 +75,7 @@ func (s *Server) HandlePutShortcut(ctx *gin.Context) {
 
 // HandleDeleteShortcut handles the `DELETE /shortcuts/:id` request.
 func (s *Server) HandleDeleteShortcut(ctx *gin.Context) {
-	err := s.Store.Delete(fmt.Sprintf("/shortcuts/%s", ctx.Param("id")))
+	err := s.Store.Delete(ctx, fmt.Sprintf("/shortcuts/%s", ctx.Param("id")))
 	if err != nil {
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -89,7 +89,7 @@ func (s *Server) HandleDeleteShortcut(ctx *gin.Context) {
 func (s *Server) HandleIDPInitiated(ctx *gin.Context) {
 	shortcutName := ctx.Param("shortcut")
 	shortcut := Shortcut{}
-	if err := s.Store.Get(fmt.Sprintf("/shortcuts/%s", shortcutName), &shortcut); err != nil {
+	if err := s.Store.Get(ctx, fmt.Sprintf("/shortcuts/%s", shortcutName), &shortcut); err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return

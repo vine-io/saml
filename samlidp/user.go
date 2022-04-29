@@ -26,7 +26,7 @@ type User struct {
 // HandleListUsers handles the `GET /users/` request and responds with a JSON formatted list
 // of user names.
 func (s *Server) HandleListUsers(ctx *gin.Context) {
-	users, err := s.Store.List("/users/")
+	users, err := s.Store.List(ctx, "/users/")
 	if err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -42,7 +42,7 @@ func (s *Server) HandleListUsers(ctx *gin.Context) {
 // format. The HashedPassword field is excluded.
 func (s *Server) HandleGetUser(ctx *gin.Context) {
 	user := User{}
-	err := s.Store.Get(fmt.Sprintf("/users/%s", ctx.Param("id")), &user)
+	err := s.Store.Get(ctx, fmt.Sprintf("/users/%s", ctx.Param("id")), &user)
 	if err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -75,7 +75,7 @@ func (s *Server) HandlePutUser(ctx *gin.Context) {
 		}
 	} else {
 		existingUser := User{}
-		err := s.Store.Get(fmt.Sprintf("/users/%s", ctx.Param("id")), &existingUser)
+		err := s.Store.Get(ctx, fmt.Sprintf("/users/%s", ctx.Param("id")), &existingUser)
 		switch {
 		case err == nil:
 			user.HashedPassword = existingUser.HashedPassword
@@ -89,7 +89,7 @@ func (s *Server) HandlePutUser(ctx *gin.Context) {
 	}
 	user.PlaintextPassword = nil
 
-	err := s.Store.Put(fmt.Sprintf("/users/%s", ctx.Param("id")), &user)
+	err := s.Store.Put(ctx, fmt.Sprintf("/users/%s", ctx.Param("id")), &user)
 	if err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -100,7 +100,7 @@ func (s *Server) HandlePutUser(ctx *gin.Context) {
 
 // HandleDeleteUser handles the `DELETE /users/:id` request.
 func (s *Server) HandleDeleteUser(ctx *gin.Context) {
-	err := s.Store.Delete(fmt.Sprintf("/users/%s", ctx.Param("id")))
+	err := s.Store.Delete(ctx, fmt.Sprintf("/users/%s", ctx.Param("id")))
 	if err != nil {
 		s.logger.Printf("ERROR: %s", err)
 		http.Error(ctx.Writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
