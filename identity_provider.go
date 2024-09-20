@@ -227,8 +227,11 @@ func (idp *IdentityProvider) ServeSSO(w http.ResponseWriter, r *http.Request) {
 
 	if err := req.Validate(); err != nil {
 		idp.Logger.Printf("failed to validate request: %s", err)
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
+		referer := r.Header.Get("Referer")
+		if referer == "" {
+			referer = "/"
+		}
+		http.Redirect(w, r, referer, http.StatusMovedPermanently)
 	}
 
 	// TODO(ross): we must check that the request ID has not been previously
@@ -253,6 +256,49 @@ func (idp *IdentityProvider) ServeSSO(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (idp *IdentityProvider) Logout(w http.ResponseWriter, r *http.Request, enId, logout, idpLogout string) {
+	req, err := NewIdpAuthnRequest1(idp, r)
+	if err != nil {
+		idp.Logger.Printf("failed to parse request: %s", err)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	if err := xml.Unmarshal(req.RequestBuffer, &req.Request); err != nil {
+		return
+	}
+	provider, err := idp.ServiceProviderProvider.GetServiceProvider(r, enId)
+	req.ServiceProviderMetadata = provider
+	if err == os.ErrNotExist {
+		idp.Logger.Printf("cannot find service provider: %s", enId)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	} else if err != nil {
+		idp.Logger.Printf("cannot find service provider %s: %v", enId, err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	parsedURL, err := url.Parse(logout)
+	if err != nil {
+		return
+	}
+
+	serviceProvider := &ServiceProvider{
+		EntityID:    provider.EntityID,
+		IDPMetadata: provider,
+		MetadataURL: *parsedURL,
+	}
+	response, err := serviceProvider.MakePostLogoutResponse(req.Request.ID, idpLogout, logout)
+	if err != nil {
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	w.Write(response)
+
+	//fmt.Println("%C")
+
 }
 
 // ServeIDPInitiated handes an IDP-initiated authorization request. Requests of this
@@ -345,10 +391,60 @@ type IdpAuthnRequest struct {
 	Now                     time.Time
 }
 
+type IdpAuthnRequest1 struct {
+	IDP                     *IdentityProvider
+	HTTPRequest             *http.Request
+	RelayState              string
+	RequestBuffer           []byte
+	Request                 LogoutRequest
+	ServiceProviderMetadata *EntityDescriptor
+	SPSSODescriptor         *SPSSODescriptor
+	ACSEndpoint             *IndexedEndpoint
+	Assertion               *Assertion
+	AssertionEl             *etree.Element
+	ResponseEl              *etree.Element
+	Now                     time.Time
+}
+
 // NewIdpAuthnRequest returns a new IdpAuthnRequest for the given HTTP request to the authorization
 // service.
 func NewIdpAuthnRequest(idp *IdentityProvider, r *http.Request) (*IdpAuthnRequest, error) {
 	req := &IdpAuthnRequest{
+		IDP:         idp,
+		HTTPRequest: r,
+		Now:         TimeNow(),
+	}
+
+	switch r.Method {
+	case "GET":
+		compressedRequest, err := base64.StdEncoding.DecodeString(r.URL.Query().Get("SAMLRequest"))
+		if err != nil {
+			return nil, fmt.Errorf("cannot decode request: %s", err)
+		}
+		req.RequestBuffer, err = ioutil.ReadAll(flate.NewReader(bytes.NewReader(compressedRequest)))
+		if err != nil {
+			return nil, fmt.Errorf("cannot decompress request: %s", err)
+		}
+		req.RelayState = r.URL.Query().Get("RelayState")
+	case "POST":
+		if err := r.ParseForm(); err != nil {
+			return nil, err
+		}
+		var err error
+		req.RequestBuffer, err = base64.StdEncoding.DecodeString(r.PostForm.Get("SAMLRequest"))
+		if err != nil {
+			return nil, err
+		}
+		req.RelayState = r.PostForm.Get("RelayState")
+	default:
+		return nil, fmt.Errorf("method not allowed")
+	}
+
+	return req, nil
+}
+
+func NewIdpAuthnRequest1(idp *IdentityProvider, r *http.Request) (*IdpAuthnRequest1, error) {
+	req := &IdpAuthnRequest1{
 		IDP:         idp,
 		HTTPRequest: r,
 		Now:         TimeNow(),

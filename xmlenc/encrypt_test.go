@@ -38,7 +38,7 @@ func TestCanEncryptOAEP(t *testing.T) {
 	t.Run("GCM", func(t *testing.T) {
 		RandReader = rand.New(rand.NewSource(0)) //nolint:gosec // deterministic random numbers for tests
 
-		cert := golden.Get(t, "cert.cert")
+		cert := golden.Get(t, "../testdata/cert.cert")
 		b, _ := pem.Decode(cert)
 		certificate, err := x509.ParseCertificate(b.Bytes)
 		assert.Check(t, err)

@@ -1373,8 +1373,8 @@ func (resp *LogoutResponse) Redirect(relayState string) *url.URL {
 // MakePostLogoutResponse creates a SAML LogoutResponse using
 // the HTTP-POST binding. It returns HTML text representing an HTML form that
 // can be sent presented to a browser for LogoutResponse.
-func (sp *ServiceProvider) MakePostLogoutResponse(logoutRequestID, relayState string) ([]byte, error) {
-	resp, err := sp.MakeLogoutResponse(sp.GetSLOBindingLocation(HTTPPostBinding), logoutRequestID)
+func (sp *ServiceProvider) MakePostLogoutResponse(logoutRequestID, relayState, issure string) ([]byte, error) {
+	resp, err := sp.MakeLogoutResponse(issure, logoutRequestID)
 	if err != nil {
 		return nil, err
 	}

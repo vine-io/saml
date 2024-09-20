@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto"
 	"crypto/x509"
 	"encoding/pem"
@@ -90,8 +91,9 @@ func main() {
 		logr.Fatalf("%s", err)
 	}
 
+	ctx := context.TODO()
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("hunter2"), bcrypt.DefaultCost)
-	err = idpServer.Store.Put("/users/alice", samlidp.User{Name: "alice",
+	err = idpServer.Store.Put(ctx, "/users/alice", samlidp.User{Name: "alice",
 		HashedPassword: hashedPassword,
 		Groups:         []string{"Administrators", "Users"},
 		Email:          "alice@example.com",
@@ -103,7 +105,7 @@ func main() {
 		logr.Fatalf("%s", err)
 	}
 
-	err = idpServer.Store.Put("/users/bob", samlidp.User{
+	err = idpServer.Store.Put(ctx, "/users/bob", samlidp.User{
 		Name:           "bob",
 		HashedPassword: hashedPassword,
 		Groups:         []string{"Users"},

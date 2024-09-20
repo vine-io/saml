@@ -376,7 +376,7 @@ func TestSPCanProducePostLogoutResponse(t *testing.T) {
 	err := xml.Unmarshal(test.IDPMetadata, &s.IDPMetadata)
 	assert.Check(t, err)
 
-	form, err := s.MakePostLogoutResponse("id-d40c15c104b52691eccf0a2a5c8a15595be75423", "relayState")
+	form, err := s.MakePostLogoutResponse("id-d40c15c104b52691eccf0a2a5c8a15595be75423", "relayState", "")
 	assert.Check(t, err)
 	golden.Assert(t, string(form), t.Name()+"_form")
 }
